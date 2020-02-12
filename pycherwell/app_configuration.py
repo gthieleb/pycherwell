@@ -11,10 +11,7 @@ import os
 import sys
 import stat
 import logging
-try:
-    from configparser import ConfigParser
-except ImportError:
-    from ConfigParser import ConfigParser  # ver. < 3.0
+from configparser import ConfigParser
 import base64
 import re
 import pprint
@@ -104,7 +101,7 @@ class AppConfiguration(object):
         ''' Handle configuration file '''
         if _has_cfg_file:
             self.cfg_file = cfg_file
-            cfg_parser = ConfigParser.RawConfigParser()
+            cfg_parser = ConfigParser()
             cfg_parser.read(cfg_file)
             if self.profile not in cfg_parser.sections():
                 raise Exception('config', 'configuration file %s has no %s section' % (cfg_file, self.profile))
