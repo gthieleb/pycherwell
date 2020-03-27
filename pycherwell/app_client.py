@@ -21,7 +21,19 @@ from pprint import pprint
 import six
 from six.moves.urllib.parse import quote
 
+<<<<<<< Updated upstream
 from pycherwell import ApiClient, Configuration, ServiceApi, BusinessObjectApi, ApiException
+=======
+from pycherwell import (ApiClient,
+                        Configuration,
+                        ServiceApi,
+                        BusinessObjectApi,
+                        ApiException,
+                        TeamsApi,
+                        SearchesApi,
+                        QuickSearchSpecificByIdRequest,
+                        Summary)
+>>>>>>> Stashed changes
 from pycherwell.app_configuration import AppConfiguration
 import urllib3
 urllib3.disable_warnings()
@@ -228,6 +240,107 @@ class CherwellClient(object):
             return rows
         return obj
 
+    def get_incidents(self, opts={}):
+        """lookup all incidents.
+
+        Note: a list of dicts is returned.
+
+        Args:
+            opts: List of options to perform lookup.
+
+        Returns:
+            returns a list of dicts containing the incident information.
+
+        """
+
+        obj_list = None
+        api_response = None
+        self._enable()
+
+        if not self.config.app['business_objects']:
+            self.log.info('Getting Business Objects data')
+            self.get_business_object_summaries({'summary_type': 'All', 'save_app_section': True})
+
+        item_oid = self.config.get_business_object('Incident')
+        if not item_oid:
+            raise Exception('internal','Failed to find business object ID of Incident Type')
+
+        api_instance = SearchesApi(self.api_client)
+
+        """
+        # this is for quick search
+        quick_search_req = dict(busObIds=[item_oid],
+                                searchText=None)
+
+        thread = api_instance.searches_get_quick_search_results_v1(quick_search_req, async_req=True)
+        """
+
+        req = QuickSearchSpecificByIdRequest(bus_ob_ids=[item_oid],
+                                            non_final_state=True,
+                                            is_bus_ob_target=True)
+
+        thread = api_instance.searches_get_quick_search_specific_results_v2(req, async_req=True)
+        api_response = thread.get()
+        obj_list = api_response
+
+        if len(obj_list.groups) == 0:
+            self.log.warn("No incidents found")
+            return
+
+        if 'output_format' in opts and opts['output_format'] in ['csv', 'text']:
+            rows = []
+            for obj in obj_list.groups:
+                if 'fields' not in obj:
+                    self.log.warn("Incident ID %s has no obj: %s", incident_id, obj)
+                    return
+                if opts['output_format'] == 'text':
+                    incident_type = self._get_field_value(obj['fields'], ('display_name', 'value', 'Incident Type'))
+                    rows.append(['', '%s # %s' % (incident_type, incident_id)])
+                    rows.extend(self._serialize_kv(obj['fields'], ('display_name', 'value'), opts))
+                elif opts['output_format'] == 'csv':
+                    rows.append(self._get_csv_headers(obj['fields'], 'display_name'))
+                    rows.append(self._get_csv_columns(obj['fields'], obj['fields']))
+                else:
+                    pass
+            return rows
+        else:
+            data = []
+            for obj in obj_list.groups:
+                data.append(obj.to_dict())
+            return data
+
+
+    def get_teams(self, opts={}):
+        teams = []
+        api_response = None
+        self._enable()
+        try:
+            api_instance = TeamsApi(self.api_client)
+            api_response = api_instance.teams_get_teams_v2()
+        except ApiException as e:
+            self.log.error('Exception when calling TeamsApi->teams_get_teams_v2: %s', e)
+            return teams
+        api_response = api_response.to_dict()
+        if 'teams' not in api_response:
+            self.log.error('The response from TeamsApi->teams_get_teams_v2() did not contain teams key')
+            return teams
+        if len(api_response['teams']) == 0:
+            self.log.error('The response from TeamsApi->teams_get_teams_v2() had no teams')
+            return teams
+
+        if 'output_format' in opts and opts['output_format'] in ['csv', 'text']:
+            teams.append(['Team Name', 'UUID'])
+
+        for team in api_response['teams']:
+            if 'output_format' in opts and opts['output_format'] in ['csv', 'text']:
+                try:
+                    teams.append([team['team_name'], team['team_id']])
+                except:
+                    pass
+            else:
+                teams.append(team)
+        self.config.save_app_section('teams', api_response['teams'])
+        return teams
 
     def _get_field_value(self, entry, pair):
         for f in entry:
