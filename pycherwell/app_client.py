@@ -21,9 +21,6 @@ from pprint import pprint
 import six
 from six.moves.urllib.parse import quote
 
-<<<<<<< Updated upstream
-from pycherwell import ApiClient, Configuration, ServiceApi, BusinessObjectApi, ApiException
-=======
 from pycherwell import (ApiClient,
                         Configuration,
                         ServiceApi,
@@ -33,7 +30,7 @@ from pycherwell import (ApiClient,
                         SearchesApi,
                         QuickSearchSpecificByIdRequest,
                         Summary)
->>>>>>> Stashed changes
+
 from pycherwell.app_configuration import AppConfiguration
 import urllib3
 urllib3.disable_warnings()
